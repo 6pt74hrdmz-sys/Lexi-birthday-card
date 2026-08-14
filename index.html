@@ -1,211 +1,136 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Birthday Particle Memories</title>
+<title>Lexi Birthday Card</title>
 <style>
-:root{--glass:rgba(255,255,255,.09);--line:rgba(255,255,255,.18)}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050611;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+html,body{margin:0;height:100%;overflow:hidden;background:#050611;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 canvas{display:block}
-#ui{position:fixed;inset:0;pointer-events:none;padding:24px;z-index:5}
-.title{font-size:22px;font-weight:650;letter-spacing:.04em;text-shadow:0 2px 18px #0008}
+#start{position:fixed;z-index:20;left:50%;top:50%;transform:translate(-50%,-50%);border:0;border-radius:999px;padding:16px 24px;font-size:16px;cursor:pointer;background:#fff;color:#111;box-shadow:0 15px 60px #0008}
+#start:disabled{opacity:.65;cursor:wait}
+#ui{position:fixed;inset:0;z-index:5;pointer-events:none;padding:24px}
+.title{font-size:22px;font-weight:650;letter-spacing:.04em}
 .sub{font-size:12px;opacity:.65;margin-top:5px}
-#status{position:absolute;left:24px;bottom:24px;padding:10px 15px;border:1px solid var(--line);border-radius:999px;background:var(--glass);backdrop-filter:blur(12px);font-size:13px}
-#hint{position:absolute;right:24px;bottom:24px;text-align:right;opacity:.62;font-size:12px;line-height:1.7}
-#start{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);padding:15px 24px;border:1px solid #fff4;border-radius:999px;background:#fff;color:#111;font-size:15px;cursor:pointer;z-index:20;box-shadow:0 10px 50px #0008}
-#start:disabled{opacity:.6}
-#video{position:fixed;right:18px;top:18px;width:150px;aspect-ratio:4/3;object-fit:cover;border-radius:14px;opacity:.22;transform:scaleX(-1);z-index:4;border:1px solid #fff2}
-#photoCard{position:fixed;left:50%;top:50%;width:min(48vw,390px);max-height:72vh;transform:translate(-50%,-50%) scale(.72) rotateY(18deg) rotateZ(2deg);opacity:0;pointer-events:none;z-index:3;transition:opacity .65s ease,transform .9s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 28px 45px #0009)}
-#photoCard.show{opacity:1;transform:translate(-50%,-50%) scale(1) rotateY(0) rotateZ(0)}
-#photoFrame{background:#fff;padding:12px 12px 38px;border-radius:4px;box-shadow:0 2px 0 #fff,0 20px 70px #0008}
-#photo{display:block;width:100%;max-height:58vh;object-fit:cover;background:#eee}
-#caption{text-align:center;color:#222;font-family:"Segoe Script","Bradley Hand",cursive;font-size:18px;margin-top:10px}
-#next{position:absolute;right:24px;top:92px;border:1px solid #fff3;background:#ffffff12;color:#fff;border-radius:999px;padding:8px 12px;font-size:11px;opacity:.6}
-#cakeLabel{position:fixed;left:50%;top:calc(50% + 180px);transform:translateX(-50%);font-size:14px;letter-spacing:.18em;opacity:0;z-index:2;transition:opacity .5s}
-#cakeLabel.show{opacity:.75}
+#status{position:absolute;left:24px;bottom:24px;padding:10px 14px;border:1px solid #fff3;border-radius:999px;background:#ffffff10;backdrop-filter:blur(10px);font-size:13px}
+#hint{position:absolute;right:24px;bottom:24px;text-align:right;opacity:.65;font-size:12px;line-height:1.7}
+#debug{position:fixed;left:24px;top:95px;z-index:6;max-width:420px;padding:10px 12px;border:1px solid #fff2;border-radius:12px;background:#0008;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;display:none}
+#video{position:fixed;right:18px;top:18px;width:150px;aspect-ratio:4/3;object-fit:cover;border-radius:14px;opacity:.25;transform:scaleX(-1);z-index:4}
+#card{position:fixed;z-index:3;left:50%;top:50%;width:min(46vw,390px);transform:translate(-50%,-50%) scale(.75) rotateY(18deg);opacity:0;transition:opacity .6s ease,transform .8s cubic-bezier(.2,.8,.2,1);pointer-events:none;filter:drop-shadow(0 25px 50px #0009)}
+#card.show{opacity:1;transform:translate(-50%,-50%) scale(1) rotateY(0)}
+#frame{background:#fff;padding:12px 12px 38px}
+#photo{width:100%;max-height:60vh;object-fit:cover;display:block}
+#caption{text-align:center;color:#222;margin-top:9px;font-family:cursive;font-size:18px}
 </style>
 </head>
 <body>
-<button id="start">启用摄像头 & 开始体验</button>
+<button id="start">Enable camera & start ✨</button>
 <video id="video" autoplay muted playsinline></video>
 <div id="ui">
   <div class="title">✨ Birthday Memories</div>
   <div class="sub">3D particle cake · gesture controlled</div>
-  <div id="status">等待启动…</div>
-  <div id="hint">✊ 握拳：聚合蛋糕<br>🖐️ 张开：散开 / 收起照片<br>🤏 捏合：召唤下一张照片<br>👆 移动手：照片轻微倾斜</div>
+  <div id="status">Ready</div>
+  <div id="hint">✊ Fist · cake<br>🖐 Open hand · scatter<br>🤏 Pinch · next photo</div>
 </div>
-<div id="cakeLabel">MAKE A WISH</div>
-<div id="photoCard">
-  <div id="photoFrame">
-    <img id="photo" alt="Birthday memory">
-    <div id="caption">a little memory ✨</div>
-  </div>
-</div>
+<div id="debug"></div>
+<div id="card"><div id="frame"><img id="photo" alt=""><div id="caption"></div></div></div>
 
 <script type="module">
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-import {HandLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm";
+import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm";
 
-const PHOTO_FILES = [
-  "photos/photo1.jpg","photos/photo2.jpg","photos/photo3.jpg","photos/photo4.jpg",
-  "photos/photo5.jpg","photos/photo6.jpg","photos/photo7.jpg","photos/photo8.jpg"
+const PHOTOS=[
+"photos/photo1.JPG","photos/photo2.JPG","photos/photo3.JPG","photos/photo4.jpg",
+"photos/photo5.jpg","photos/photo6.jpg","photos/photo7.jpg","photos/photo8.jpg"
 ];
+const $=id=>document.getElementById(id);
+const status=$("status"), debug=$("debug"), start=$("start"), video=$("video"), card=$("card"), photo=$("photo"), caption=$("caption");
+
+function log(msg){
+  status.textContent=msg;
+  debug.textContent=msg;
+  console.log("[BirthdayCard]",msg);
+}
+function fail(msg,err){
+  console.error(msg,err||"");
+  debug.style.display="block";
+  debug.textContent=msg+(err?.message?("\\n"+err.message):"");
+  status.textContent="⚠️ "+msg;
+  start.disabled=false;
+  start.textContent="Try again";
+}
 
 const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);
-camera.position.z=8;
-const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+scene.background=new THREE.Color(0x050611);
+const cam=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);
+cam.position.z=8;
+const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const N=10000;
-const geo=new THREE.BufferGeometry();
+const N=9000, geo=new THREE.BufferGeometry();
 const pos=new Float32Array(N*3), target=new Float32Array(N*3);
-const velocities=new Float32Array(N*3);
-for(let i=0;i<N;i++){
-  const r=3+Math.random()*3.2, a=Math.random()*Math.PI*2, y=(Math.random()-.5)*4.5;
-  pos[i*3]=Math.cos(a)*r; pos[i*3+1]=y; pos[i*3+2]=Math.sin(a)*r;
-}
-function addCakePoint(arr,p){arr.push(p[0],p[1],p[2]);}
-function buildCake(){
-  const pts=[];
-  // cake tiers
-  for(let layer=0;layer<3;layer++){
-    const radius=1.62-layer*.20, y=-1.15+layer*.70;
-    for(let i=0;i<1900;i++){
-      const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*radius;
-      addCakePoint(pts,[Math.cos(a)*r,y+(Math.random()-.5)*.56,Math.sin(a)*r]);
-    }
-  }
-  // frosting top
-  for(let i=0;i<1000;i++){
-    const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*1.5;
-    addCakePoint(pts,[Math.cos(a)*r,.82+Math.random()*.25,Math.sin(a)*r]);
-  }
-  // five candles + flames
-  for(let c=0;c<5;c++){
-    const x=(c-2)*.52;
-    for(let i=0;i<280;i++){
-      const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*.085;
-      addCakePoint(pts,[x+Math.cos(a)*r,1.02+Math.random()*.95,Math.sin(a)*r]);
-    }
-    for(let i=0;i<110;i++){
-      const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*.13;
-      addCakePoint(pts,[x+Math.cos(a)*r,2.05+Math.random()*.30,Math.sin(a)*r]);
-    }
-  }
-  while(pts.length/3<N){
-    const a=Math.random()*Math.PI*2,r=1.25+Math.random()*.35;
-    addCakePoint(pts,[Math.cos(a)*r,.94+Math.random()*.12,Math.sin(a)*r]);
-  }
-  for(let i=0;i<N;i++){
-    target[i*3]=pts[i*3]; target[i*3+1]=pts[i*3+1]; target[i*3+2]=pts[i*3+2];
-  }
-}
-buildCake();
+for(let i=0;i<N;i++){const r=3+Math.random()*3,a=Math.random()*Math.PI*2;pos[i*3]=Math.cos(a)*r;pos[i*3+1]=(Math.random()-.5)*4;pos[i*3+2]=Math.sin(a)*r;}
+const pts=[];
+function add(x,y,z){pts.push(x,y,z)}
+for(let layer=0;layer<3;layer++){const rad=1.65-layer*.2,y=-1.15+layer*.7;for(let i=0;i<1800;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*rad;add(Math.cos(a)*r,y+(Math.random()-.5)*.56,Math.sin(a)*r)}}
+for(let i=0;i<1000;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*1.5;add(Math.cos(a)*r,.82+Math.random()*.24,Math.sin(a)*r)}
+for(let c=0;c<5;c++){const x=(c-2)*.52;for(let i=0;i<280;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*.085;add(x+Math.cos(a)*r,1.02+Math.random()*.95,Math.sin(a)*r)}for(let i=0;i<100;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*.13;add(x+Math.cos(a)*r,2.05+Math.random()*.3,Math.sin(a)*r)}}
+while(pts.length<N*3){const a=Math.random()*Math.PI*2,r=1.3+Math.random()*.3;add(Math.cos(a)*r,.95+Math.random()*.12,Math.sin(a)*r)}
+for(let i=0;i<N;i++){target[i*3]=pts[i*3];target[i*3+1]=pts[i*3+1];target[i*3+2]=pts[i*3+2]}
 geo.setAttribute("position",new THREE.BufferAttribute(pos,3));
-const mat=new THREE.PointsMaterial({size:.032,color:0xffd8ee,transparent:true,opacity:.92,blending:THREE.AdditiveBlending,depthWrite:false});
-const particles=new THREE.Points(geo,mat); scene.add(particles);
-
-// background stars
-const sg=new THREE.BufferGeometry(), sp=new Float32Array(2200*3);
-for(let i=0;i<2200;i++){sp[i*3]=(Math.random()-.5)*20;sp[i*3+1]=(Math.random()-.5)*13;sp[i*3+2]=(Math.random()-.5)*9;}
+const particles=new THREE.Points(geo,new THREE.PointsMaterial({size:.034,color:0xffd7ed,transparent:true,opacity:.92,blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(particles);
+const sg=new THREE.BufferGeometry(),sp=new Float32Array(1800*3);
+for(let i=0;i<1800;i++){sp[i*3]=(Math.random()-.5)*20;sp[i*3+1]=(Math.random()-.5)*13;sp[i*3+2]=(Math.random()-.5)*9}
 sg.setAttribute("position",new THREE.BufferAttribute(sp,3));
-scene.add(new THREE.Points(sg,new THREE.PointsMaterial({size:.015,color:0xffffff,transparent:true,opacity:.42})));
+scene.add(new THREE.Points(sg,new THREE.PointsMaterial({size:.015,color:0xffffff,opacity:.4,transparent:true})));
 
-let gather=.08, handX=0, handY=0, photoIndex=-1, lastPinch=0, photoVisible=false;
-const status=document.querySelector("#status"), card=document.querySelector("#photoCard"), photo=document.querySelector("#photo"), cakeLabel=document.querySelector("#cakeLabel");
-
-function showPhoto(){
-  photoIndex=(photoIndex+1)%PHOTO_FILES.length;
-  photo.src=PHOTO_FILES[photoIndex];
-  photo.alt="Memory "+(photoIndex+1);
-  document.querySelector("#caption").textContent="memory "+String(photoIndex+1).padStart(2,"0")+"  ✨";
-  card.classList.add("show"); photoVisible=true;
-  gather=.22;
+let gather=.08,hx=0,hy=0,lastPinch=0,idx=-1;
+function showPhoto(){idx=(idx+1)%PHOTOS.length;photo.src=PHOTOS[idx];caption.textContent="memory "+String(idx+1).padStart(2,"0")+" ✨";card.classList.add("show");gather=.22}
+function hidePhoto(){card.classList.remove("show")}
+function animate(t){
+ requestAnimationFrame(animate);
+ const a=geo.attributes.position.array;
+ for(let i=0;i<N;i++){const k=i*3,spread=1-gather;const sx=Math.cos(i*12.9898)*3.1*spread+hx*spread*.45,sy=Math.sin(i*78.233)*2.6*spread+hy*spread*.35,sz=Math.sin(i*39.425)*3*spread;a[k]+=((target[k]*gather+sx)-a[k])*.055;a[k+1]+=((target[k+1]*gather+sy)-a[k+1])*.055;a[k+2]+=((target[k+2]*gather+sz)-a[k+2])*.055}
+ geo.attributes.position.needsUpdate=true;particles.rotation.y+=gather>.7?.002:.0008;renderer.render(scene,cam)
 }
-function hidePhoto(){card.classList.remove("show");photoVisible=false;}
-function updateParticles(t){
-  const a=geo.attributes.position.array;
-  for(let i=0;i<N;i++){
-    const k=i*3, tx=target[k]*gather, ty=target[k+1]*gather, tz=target[k+2]*gather;
-    const spread=(1-gather);
-    const swirl=Math.sin(t*.00055+i*.017)*.035;
-    const sx=Math.cos(i*12.9898)*3.2*spread + handX*spread*.45;
-    const sy=Math.sin(i*78.233)*2.6*spread + handY*spread*.35;
-    const sz=Math.sin(i*39.425)*3.0*spread;
-    a[k]+=((tx+sx)-a[k])*.055;
-    a[k+1]+=((ty+sy)-a[k+1])*.055;
-    a[k+2]+=((tz+sz)-a[k+2])*.055 + swirl;
-  }
-  geo.attributes.position.needsUpdate=true;
-  particles.rotation.y += gather>.7 ? .0022 : .0008;
-  particles.rotation.x = Math.sin(t*.00025)*.05;
-}
-function tiltCard(){
-  card.style.transform = photoVisible
-    ? `translate(-50%,-50%) scale(1) rotateY(${handX*3}deg) rotateX(${-handY*2}deg) rotateZ(${handX*.5}deg)`
-    : "";
-}
-function animate(t){requestAnimationFrame(animate);updateParticles(t);tiltCard();renderer.render(scene,camera)}
 animate(0);
 
-async function setupHands(){
-  try{
-    status.textContent="正在加载手势识别…";
-    const fs=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm");
-    const hand=await HandLandmarker.createFromOptions(fs,{
-      baseOptions:{
-        modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-        delegate:"GPU"
-      },runningMode:"VIDEO",numHands:1
-    });
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:640,height:480},audio:false});
-    const video=document.querySelector("#video");video.srcObject=stream;await video.play();
-    status.textContent="摄像头已启动 · 试试握拳";
-    let lastVideo=-1;
-    function detect(){
-      if(video.readyState>=2 && video.currentTime!==lastVideo){
-        lastVideo=video.currentTime;
-        const r=hand.detectForVideo(video,performance.now());
-        if(r.landmarks?.length){
-          const lm=r.landmarks[0], wrist=lm[0], index=lm[8], thumb=lm[4];
-          handX=(.5-index.x)*4.8; handY=(index.y-.5)*4.0;
-          const pinch=Math.hypot(index.x-thumb.x,index.y-thumb.y);
-          const tips=[8,12,16,20];
-          const avg=tips.reduce((s,k)=>s+Math.hypot(lm[k].x-wrist.x,lm[k].y-wrist.y),0)/4;
-          if(pinch<.055){
-            gather=Math.min(1,gather+.035);
-            if(performance.now()-lastPinch>1100){showPhoto();lastPinch=performance.now();}
-            status.textContent="🤏 捏合 · 召唤照片";
-            cakeLabel.classList.remove("show");
-          }else if(avg<.24){
-            gather=Math.min(1,gather+.045);
-            hidePhoto();
-            status.textContent="✊ 握拳 · 蛋糕聚合";
-            cakeLabel.classList.add("show");
-          }else{
-            gather=Math.max(.06,gather-.035);
-            hidePhoto();
-            status.textContent="🖐️ 张开 · 粒子散开";
-            cakeLabel.classList.remove("show");
-          }
-        }
-      }
-      requestAnimationFrame(detect);
-    }
-    detect();
-  }catch(err){
-    console.error(err);
-    status.textContent="无法启动摄像头：请检查浏览器权限，并确认通过 localhost/HTTPS 打开";
-  }
+async function startExperience(){
+ start.disabled=true; debug.style.display="block";
+ if(!window.isSecureContext) throw new Error("This page is not a secure context. Open the GitHub Pages HTTPS URL.");
+ if(!navigator.mediaDevices?.getUserMedia) throw new Error("Camera API is unavailable in this browser.");
+ log("1/3 Requesting camera permission…");
+ const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:640},height:{ideal:480}},audio:false});
+ video.srcObject=stream; await video.play();
+ log("2/3 Camera is working. Loading hand model…");
+ const fs=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm");
+ const hand=await HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",delegate:"GPU"},runningMode:"VIDEO",numHands:1});
+ log("3/3 Ready — show your hand ✋"); debug.style.display="none"; start.style.display="none";
+ let lastTime=-1;
+ function detect(){
+   if(video.readyState>=2 && video.currentTime!==lastTime){
+     lastTime=video.currentTime;
+     const r=hand.detectForVideo(video,performance.now());
+     if(r.landmarks?.length){
+       const lm=r.landmarks[0],w=lm[0],i=lm[8],th=lm[4];
+       hx=(.5-i.x)*4.5;hy=(i.y-.5)*3.8;
+       const pinch=Math.hypot(i.x-th.x,i.y-th.y);
+       const tips=[8,12,16,20],avg=tips.reduce((s,k)=>s+Math.hypot(lm[k].x-w.x,lm[k].y-w.y),0)/4;
+       if(pinch<.055){gather=Math.min(1,gather+.035);if(performance.now()-lastPinch>1000){showPhoto();lastPinch=performance.now()}status.textContent="🤏 Pinch · next memory"}
+       else if(avg<.24){gather=Math.min(1,gather+.05);hidePhoto();status.textContent="✊ Fist · birthday cake"}
+       else{gather=Math.max(.05,gather-.035);hidePhoto();status.textContent="🖐 Open hand · scatter"}
+     }
+   }
+   requestAnimationFrame(detect)
+ }
+ detect();
 }
-document.querySelector("#start").onclick=async()=>{
-  const b=document.querySelector("#start");b.disabled=true;b.textContent="加载中…";await setupHands();b.style.display="none";
-};
-addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+start.onclick=async()=>{try{await startExperience()}catch(e){fail("Camera/hand tracking failed.",e)}};
+addEventListener("resize",()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 </script>
 </body>
 </html>

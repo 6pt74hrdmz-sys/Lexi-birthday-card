@@ -1,136 +1,109 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Lexi Birthday Card</title>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:#050611;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-canvas{display:block}
-#start{position:fixed;z-index:20;left:50%;top:50%;transform:translate(-50%,-50%);border:0;border-radius:999px;padding:16px 24px;font-size:16px;cursor:pointer;background:#fff;color:#111;box-shadow:0 15px 60px #0008}
-#start:disabled{opacity:.65;cursor:wait}
-#ui{position:fixed;inset:0;z-index:5;pointer-events:none;padding:24px}
-.title{font-size:22px;font-weight:650;letter-spacing:.04em}
-.sub{font-size:12px;opacity:.65;margin-top:5px}
-#status{position:absolute;left:24px;bottom:24px;padding:10px 14px;border:1px solid #fff3;border-radius:999px;background:#ffffff10;backdrop-filter:blur(10px);font-size:13px}
-#hint{position:absolute;right:24px;bottom:24px;text-align:right;opacity:.65;font-size:12px;line-height:1.7}
-#debug{position:fixed;left:24px;top:95px;z-index:6;max-width:420px;padding:10px 12px;border:1px solid #fff2;border-radius:12px;background:#0008;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;display:none}
-#video{position:fixed;right:18px;top:18px;width:150px;aspect-ratio:4/3;object-fit:cover;border-radius:14px;opacity:.25;transform:scaleX(-1);z-index:4}
-#card{position:fixed;z-index:3;left:50%;top:50%;width:min(46vw,390px);transform:translate(-50%,-50%) scale(.75) rotateY(18deg);opacity:0;transition:opacity .6s ease,transform .8s cubic-bezier(.2,.8,.2,1);pointer-events:none;filter:drop-shadow(0 25px 50px #0009)}
-#card.show{opacity:1;transform:translate(-50%,-50%) scale(1) rotateY(0)}
-#frame{background:#fff;padding:12px 12px 38px}
-#photo{width:100%;max-height:60vh;object-fit:cover;display:block}
-#caption{text-align:center;color:#222;margin-top:9px;font-family:cursive;font-size:18px}
+html,body{margin:0;height:100%;overflow:hidden;background:#050611;color:#fff;font-family:system-ui,-apple-system,sans-serif}
+canvas{display:block}#start{position:fixed;z-index:99;left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 25px;border:0;border-radius:999px;background:#fff;color:#111;font-size:16px;cursor:pointer;box-shadow:0 15px 60px #0008}
+#status{position:fixed;z-index:20;left:20px;bottom:20px;padding:10px 14px;border:1px solid #fff3;border-radius:999px;background:#0008;font-size:13px}
+#debug{position:fixed;z-index:30;left:20px;top:70px;max-width:520px;padding:10px;border-radius:10px;background:#000b;color:#ddd;font:12px/1.5 monospace;display:none}
+#video{position:fixed;z-index:10;right:18px;top:18px;width:150px;border-radius:14px;transform:scaleX(-1);opacity:.35}
+#title{position:fixed;z-index:5;left:20px;top:20px;font-size:21px}.sub{font-size:11px;opacity:.55;margin-top:4px}
+#hint{position:fixed;z-index:5;right:20px;bottom:20px;text-align:right;font-size:12px;line-height:1.7;opacity:.6}
+#card{position:fixed;z-index:8;left:50%;top:50%;width:min(46vw,390px);padding:12px 12px 36px;background:#fff;color:#222;opacity:0;transform:translate(-50%,-50%) scale(.75);transition:.7s;box-shadow:0 25px 60px #0009}
+#card.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#photo{width:100%;max-height:60vh;object-fit:cover;display:block}.caption{text-align:center;margin-top:8px;font-family:cursive;font-size:18px}
 </style>
 </head>
 <body>
 <button id="start">Enable camera & start ✨</button>
+<div id="title">✨ Birthday Memories<div class="sub">3D particle cake · gesture controlled</div></div>
 <video id="video" autoplay muted playsinline></video>
-<div id="ui">
-  <div class="title">✨ Birthday Memories</div>
-  <div class="sub">3D particle cake · gesture controlled</div>
-  <div id="status">Ready</div>
-  <div id="hint">✊ Fist · cake<br>🖐 Open hand · scatter<br>🤏 Pinch · next photo</div>
-</div>
-<div id="debug"></div>
-<div id="card"><div id="frame"><img id="photo" alt=""><div id="caption"></div></div></div>
+<div id="status">Ready — click the button</div><div id="debug"></div>
+<div id="hint">✊ 握拳 · 蛋糕<br>🖐️ 张开 · 粒子散开<br>🤏 捏合 · 下一张照片</div>
+<div id="card"><img id="photo"><div class="caption" id="caption"></div></div>
 
-<script type="module">
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm";
+<script>
+/* V4 deliberately binds the button BEFORE loading any external library. */
+const start=document.getElementById('start'), status=document.getElementById('status'), debug=document.getElementById('debug'), video=document.getElementById('video');
+const card=document.getElementById('card'), photo=document.getElementById('photo'), caption=document.getElementById('caption');
+const photos=["photos/photo1.JPG","photos/photo2.JPG","photos/photo3.JPG","photos/photo4.jpg","photos/photo5.jpg","photos/photo6.jpg","photos/photo7.jpg","photos/photo8.jpg"];
+let stream=null, hand=null, started=false, photoIndex=-1, lastPinch=0;
 
-const PHOTOS=[
-"photos/photo1.JPG","photos/photo2.JPG","photos/photo3.JPG","photos/photo4.jpg",
-"photos/photo5.jpg","photos/photo6.jpg","photos/photo7.jpg","photos/photo8.jpg"
-];
-const $=id=>document.getElementById(id);
-const status=$("status"), debug=$("debug"), start=$("start"), video=$("video"), card=$("card"), photo=$("photo"), caption=$("caption");
+function setStatus(s){status.textContent=s;console.log(s)}
+function error(e){debug.style.display='block';debug.textContent='ERROR\\n'+(e?.stack||e?.message||e);status.textContent='⚠️ '+(e?.message||'Something failed');start.disabled=false;start.textContent='Try again'}
 
-function log(msg){
-  status.textContent=msg;
-  debug.textContent=msg;
-  console.log("[BirthdayCard]",msg);
+start.addEventListener('click', async ()=>{
+  if(started) return;
+  start.disabled=true; start.textContent='Requesting camera…';
+  try{
+    if(!window.isSecureContext) throw new Error('Not HTTPS. Open the github.io address.');
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Camera API is unavailable.');
+    setStatus('1/3 Requesting camera permission…');
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    video.srcObject=stream; await video.play();
+    video.style.opacity='.55';
+    setStatus('2/3 CAMERA ON ✓ Loading 3D + hand tracking…');
+    start.style.display='none';
+    await loadScripts();
+  }catch(e){error(e)}
+});
+
+async function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Failed to load '+src));document.head.appendChild(s)
+  })
 }
-function fail(msg,err){
-  console.error(msg,err||"");
-  debug.style.display="block";
-  debug.textContent=msg+(err?.message?("\\n"+err.message):"");
-  status.textContent="⚠️ "+msg;
-  start.disabled=false;
-  start.textContent="Try again";
-}
-
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x050611);
-const cam=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);
-cam.position.z=8;
-const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.setSize(innerWidth,innerHeight);
-document.body.appendChild(renderer.domElement);
-
-const N=9000, geo=new THREE.BufferGeometry();
-const pos=new Float32Array(N*3), target=new Float32Array(N*3);
-for(let i=0;i<N;i++){const r=3+Math.random()*3,a=Math.random()*Math.PI*2;pos[i*3]=Math.cos(a)*r;pos[i*3+1]=(Math.random()-.5)*4;pos[i*3+2]=Math.sin(a)*r;}
-const pts=[];
-function add(x,y,z){pts.push(x,y,z)}
-for(let layer=0;layer<3;layer++){const rad=1.65-layer*.2,y=-1.15+layer*.7;for(let i=0;i<1800;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*rad;add(Math.cos(a)*r,y+(Math.random()-.5)*.56,Math.sin(a)*r)}}
-for(let i=0;i<1000;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*1.5;add(Math.cos(a)*r,.82+Math.random()*.24,Math.sin(a)*r)}
-for(let c=0;c<5;c++){const x=(c-2)*.52;for(let i=0;i<280;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*.085;add(x+Math.cos(a)*r,1.02+Math.random()*.95,Math.sin(a)*r)}for(let i=0;i<100;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*.13;add(x+Math.cos(a)*r,2.05+Math.random()*.3,Math.sin(a)*r)}}
-while(pts.length<N*3){const a=Math.random()*Math.PI*2,r=1.3+Math.random()*.3;add(Math.cos(a)*r,.95+Math.random()*.12,Math.sin(a)*r)}
-for(let i=0;i<N;i++){target[i*3]=pts[i*3];target[i*3+1]=pts[i*3+1];target[i*3+2]=pts[i*3+2]}
-geo.setAttribute("position",new THREE.BufferAttribute(pos,3));
-const particles=new THREE.Points(geo,new THREE.PointsMaterial({size:.034,color:0xffd7ed,transparent:true,opacity:.92,blending:THREE.AdditiveBlending,depthWrite:false}));
-scene.add(particles);
-const sg=new THREE.BufferGeometry(),sp=new Float32Array(1800*3);
-for(let i=0;i<1800;i++){sp[i*3]=(Math.random()-.5)*20;sp[i*3+1]=(Math.random()-.5)*13;sp[i*3+2]=(Math.random()-.5)*9}
-sg.setAttribute("position",new THREE.BufferAttribute(sp,3));
-scene.add(new THREE.Points(sg,new THREE.PointsMaterial({size:.015,color:0xffffff,opacity:.4,transparent:true})));
-
-let gather=.08,hx=0,hy=0,lastPinch=0,idx=-1;
-function showPhoto(){idx=(idx+1)%PHOTOS.length;photo.src=PHOTOS[idx];caption.textContent="memory "+String(idx+1).padStart(2,"0")+" ✨";card.classList.add("show");gather=.22}
-function hidePhoto(){card.classList.remove("show")}
-function animate(t){
- requestAnimationFrame(animate);
- const a=geo.attributes.position.array;
- for(let i=0;i<N;i++){const k=i*3,spread=1-gather;const sx=Math.cos(i*12.9898)*3.1*spread+hx*spread*.45,sy=Math.sin(i*78.233)*2.6*spread+hy*spread*.35,sz=Math.sin(i*39.425)*3*spread;a[k]+=((target[k]*gather+sx)-a[k])*.055;a[k+1]+=((target[k+1]*gather+sy)-a[k+1])*.055;a[k+2]+=((target[k+2]*gather+sz)-a[k+2])*.055}
- geo.attributes.position.needsUpdate=true;particles.rotation.y+=gather>.7?.002:.0008;renderer.render(scene,cam)
-}
-animate(0);
-
-async function startExperience(){
- start.disabled=true; debug.style.display="block";
- if(!window.isSecureContext) throw new Error("This page is not a secure context. Open the GitHub Pages HTTPS URL.");
- if(!navigator.mediaDevices?.getUserMedia) throw new Error("Camera API is unavailable in this browser.");
- log("1/3 Requesting camera permission…");
- const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:640},height:{ideal:480}},audio:false});
- video.srcObject=stream; await video.play();
- log("2/3 Camera is working. Loading hand model…");
- const fs=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm");
- const hand=await HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",delegate:"GPU"},runningMode:"VIDEO",numHands:1});
- log("3/3 Ready — show your hand ✋"); debug.style.display="none"; start.style.display="none";
- let lastTime=-1;
- function detect(){
-   if(video.readyState>=2 && video.currentTime!==lastTime){
-     lastTime=video.currentTime;
-     const r=hand.detectForVideo(video,performance.now());
-     if(r.landmarks?.length){
-       const lm=r.landmarks[0],w=lm[0],i=lm[8],th=lm[4];
-       hx=(.5-i.x)*4.5;hy=(i.y-.5)*3.8;
-       const pinch=Math.hypot(i.x-th.x,i.y-th.y);
-       const tips=[8,12,16,20],avg=tips.reduce((s,k)=>s+Math.hypot(lm[k].x-w.x,lm[k].y-w.y),0)/4;
-       if(pinch<.055){gather=Math.min(1,gather+.035);if(performance.now()-lastPinch>1000){showPhoto();lastPinch=performance.now()}status.textContent="🤏 Pinch · next memory"}
-       else if(avg<.24){gather=Math.min(1,gather+.05);hidePhoto();status.textContent="✊ Fist · birthday cake"}
-       else{gather=Math.max(.05,gather-.035);hidePhoto();status.textContent="🖐 Open hand · scatter"}
-     }
-   }
-   requestAnimationFrame(detect)
- }
- detect();
+async function loadScripts(){
+  // Load MediaPipe and Three.js after camera is already proven to work.
+  await loadScript('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js');
+  await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.js');
+  setStatus('3/3 Camera ON ✓ Libraries loaded');
+  await initThree();
+  await initHands();
 }
 
-start.onclick=async()=>{try{await startExperience()}catch(e){fail("Camera/hand tracking failed.",e)}};
-addEventListener("resize",()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+async function initThree(){
+  const THREE=window.THREE;
+  const scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);cam.position.z=8;
+  const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);document.body.appendChild(renderer.domElement);
+  const N=8500, geo=new THREE.BufferGeometry(), a=new Float32Array(N*3), t=new Float32Array(N*3), pts=[];
+  const add=(x,y,z)=>pts.push(x,y,z);
+  for(let l=0;l<3;l++){let r=1.65-l*.2,y=-1.15+l*.7;for(let i=0;i<1700;i++){let q=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random())*r;add(Math.cos(q)*rr,y+(Math.random()-.5)*.55,Math.sin(q)*rr)}}
+  for(let i=0;i<1000;i++){let q=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random())*1.5;add(Math.cos(q)*rr,.85+Math.random()*.2,Math.sin(q)*rr)}
+  for(let c=0;c<5;c++){let x=(c-2)*.52;for(let i=0;i<260;i++){let q=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random())*.09;add(x+Math.cos(q)*rr,1.05+Math.random()*.9,Math.sin(q)*rr)}}
+  while(pts.length<N*3){let q=Math.random()*Math.PI*2,r=1.3+Math.random()*.3;add(Math.cos(q)*r,.95+Math.random()*.1,Math.sin(q)*r)}
+  for(let i=0;i<N;i++){a[i*3]=(Math.random()-.5)*7;a[i*3+1]=(Math.random()-.5)*5;a[i*3+2]=(Math.random()-.5)*7;t[i*3]=pts[i*3];t[i*3+1]=pts[i*3+1];t[i*3+2]=pts[i*3+2]}
+  geo.setAttribute('position',new THREE.BufferAttribute(a,3));
+  const p=new THREE.Points(geo,new THREE.PointsMaterial({size:.035,color:0xffd7ed,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(p);
+  let gather=.15,hx=0,hy=0;
+  window.__particleControl=(g,x,y)=>{gather=g;hx=x;hy=y};
+  function loop(){requestAnimationFrame(loop);for(let i=0;i<N;i++){let k=i*3,s=1-gather,sx=Math.cos(i*12.9)*3*s+hx*s*.4,sy=Math.sin(i*78.2)*2.5*s+hy*s*.3,sz=Math.sin(i*39.4)*3*s;a[k]+=((t[k]*gather+sx)-a[k])*.055;a[k+1]+=((t[k+1]*gather+sy)-a[k+1])*.055;a[k+2]+=((t[k+2]*gather+sz)-a[k+2])*.055}geo.attributes.position.needsUpdate=true;p.rotation.y+=.001;renderer.render(scene,cam)}
+  loop();
+  addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})
+}
+async function initHands(){
+  const {FilesetResolver,HandLandmarker}=window.vision;
+  const fs=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+  hand=await HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numHands:1});
+  setStatus('READY ✓ Camera ON · Show your hand');
+  started=true; debug.style.display='none'; detect();
+}
+function nextPhoto(){photoIndex=(photoIndex+1)%photos.length;photo.src=photos[photoIndex];caption.textContent='memory '+String(photoIndex+1).padStart(2,'0')+' ✨';card.classList.add('show')}
+function hidePhoto(){card.classList.remove('show')}
+function detect(){
+  const r=hand.detectForVideo(video,performance.now());
+  if(r.landmarks?.length){
+    const lm=r.landmarks[0],w=lm[0],i=lm[8],th=lm[4];
+    const hx=(.5-i.x)*4.5,hy=(i.y-.5)*3.8,pinch=Math.hypot(i.x-th.x,i.y-th.y);
+    const tips=[8,12,16,20],avg=tips.reduce((s,k)=>s+Math.hypot(lm[k].x-w.x,lm[k].y-w.y),0)/4;
+    if(pinch<.055){window.__particleControl?.(.25,hx,hy);if(performance.now()-lastPinch>1000){nextPhoto();lastPinch=performance.now()}status.textContent='🤏 Pinch · next memory'}
+    else if(avg<.24){window.__particleControl?.(1,hx,hy);hidePhoto();status.textContent='✊ Fist · birthday cake'}
+    else{window.__particleControl?.(.06,hx,hy);hidePhoto();status.textContent='🖐️ Open hand · scatter'}
+  }
+  requestAnimationFrame(detect)
+}
 </script>
 </body>
 </html>

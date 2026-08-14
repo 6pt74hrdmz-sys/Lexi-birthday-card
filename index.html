@@ -28,11 +28,11 @@ canvas{display:block}
 <video id="video" autoplay muted playsinline></video>
 <div id="status">Ready</div>
 <div id="debug"></div>
-<div id="hint">✊ Fist · birthday cake<br>🖐️ Open hand · scatter<br>✌️ Victory sign · next memory · after one round, photos close</div>
+<div id="hint">✊ Fist · birthday cake<br>🖐️ Open hand · scatter<br>✌️ Victory sign · next memory · final photo closes after 5s</div>
 <div id="card"><img id="photo" alt="Birthday memory"></div>
 <script>
 const startButton=document.getElementById("start"),statusEl=document.getElementById("status"),debugEl=document.getElementById("debug"),video=document.getElementById("video"),card=document.getElementById("card"),photo=document.getElementById("photo");
-const photos=["photo1.jpg","photo2.jpg","photo3.jpg","photo4.jpg","photo5.jpg","photo6.jpg","photo7.jpg","photo8.jpg"];
+const photos=["photo1.jpg","photo2.jpg","photo3.jpg","photo4.jpg","photo5.jpg","photo6.jpg","photo7.jpg","photo8.jpg","photo9.png"];
 let stream=null,handLandmarker=null,started=false,photoIndex=-1,wasVictory=false,photoCycleDone=false,photoHideTimer=null;
 function setStatus(text){statusEl.textContent=text;console.log("[Birthday V6]",text)}
 function showError(err){const message=err&&(err.message||String(err))||"Unknown error";debugEl.style.display="block";debugEl.textContent="V6 ERROR\n\n"+message+"\n\nIf you see this, the page is running and the button works.";setStatus("⚠️ "+message);startButton.disabled=false;startButton.textContent="Try again"}
@@ -60,7 +60,7 @@ function nextPhoto(){
       hidePhoto();
       photoHideTimer=null;
       statusEl.textContent="✨ Memories closed · victory sign to reopen";
-    },1600);
+    },5000);
   }
 }
 function hidePhoto(){card.classList.remove("show")}

@@ -50,15 +50,17 @@ function nextPhoto(){
     statusEl.textContent="🤏 Pinch · memories reopened";
     return;
   }
-  photoIndex++;
-  if(photoIndex>=photos.length){
-    photoCycleDone=true;
-    hidePhoto();
-    statusEl.textContent="✨ One round complete · pinch to reopen memories";
-    return;
-  }
+  photoIndex=(photoIndex+1)%photos.length;
   photo.src=photos[photoIndex];
   card.classList.add("show");
+  if(photoIndex===photos.length-1){
+    photoCycleDone=true;
+    photoHideTimer=setTimeout(()=>{
+      hidePhoto();
+      photoHideTimer=null;
+      statusEl.textContent="✨ Memories closed · pinch to reopen";
+    },1600);
+  }
 }
 function hidePhoto(){card.classList.remove("show")}
 function detect(){if(!handLandmarker){requestAnimationFrame(detect);return}try{const result=handLandmarker.detectForVideo(video,performance.now());if(result.landmarks&&result.landmarks.length){const lm=result.landmarks[0],wrist=lm[0],index=lm[8],thumb=lm[4],hx=(.5-index.x)*4.5,hy=(index.y-.5)*3.8,pinch=Math.hypot(index.x-thumb.x,index.y-thumb.y),isPinching=pinch<.055,tips=[8,12,16,20],avg=tips.reduce((sum,k)=>sum+Math.hypot(lm[k].x-wrist.x,lm[k].y-wrist.y),0)/4;if(isPinching){window.__particleControl?.(.25,hx,hy);if(!wasPinching){nextPhoto()}statusEl.textContent=photoCycleDone?"🤏 Pinch · reopen memories":"🤏 Pinch · next memory"}else if(avg<.24){window.__particleControl?.(1,hx,hy);statusEl.textContent="✊ Fist · birthday cake"}else{window.__particleControl?.(.06,hx,hy);statusEl.textContent="🖐️ Open hand · scatter"}wasPinching=isPinching}else{wasPinching=false}}catch(err){showError(err);return}requestAnimationFrame(detect)}
